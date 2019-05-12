@@ -1,4 +1,5 @@
 {-# language DerivingStrategies #-}
+{-# language GeneralizedNewtypeDeriving #-}
 {-# language LambdaCase #-}
 {-# language OverloadedStrings #-}
 {-# language ScopedTypeVariables #-}
@@ -8,11 +9,9 @@ module Gw
   ( main
   ) where
 
-import Data.String (fromString)
 import System.Environment (getArgs)
-import System.Exit (ExitCode(..))
 import qualified Data.List as List
-import qualified Turtle
+import qualified System.Posix.Process as P
 
 main :: IO ()
 main = parseArgs >>= runCmd
@@ -24,12 +23,18 @@ parseArgs = getArgs >>= \case
   ("--version":_) -> pure Version
   ("-h":_) -> pure Help
   ("--help":_) -> pure Help
-  (x:xs) -> do
-    case readGhc x of
-      Left str -> do
-        putStr (str ++ "\n")
-        pure BadCmd
-      Right g -> pure $ GhcWith g (PkgSet xs)
+  ("-p":xs) -> go Pure xs
+  ("--pure":xs) -> go Pure xs
+  xs -> go Impure xs
+  where
+    go :: Purity -> [String] -> IO Cmd
+    go p = \case
+      [] -> pure BadCmd
+      (x:xs) -> case readGhc x of
+        Left str -> do
+          putStr (str ++ "\n")
+          pure BadCmd
+        Right g -> pure $ GhcWith p g (PkgSet xs)
 
 ghcWith :: Ghc -> PkgSet -> String
 ghcWith (showGhc -> ghc) (showPkgSet -> pkgs) = mconcat
@@ -40,26 +45,25 @@ ghcWith (showGhc -> ghc) (showPkgSet -> pkgs) = mconcat
   , " ])"
   ]
 
-ghcWithIO :: Ghc -> PkgSet -> IO (Either String ())
-ghcWithIO g p = do
-  Turtle.proc "nix-shell" ["-p"] (fromString $ ghcWith g p) >>= \case
-    ExitSuccess -> pure . Right $ ()
-    ExitFailure i -> pure . Left $
-      "Nonzero exit code " ++ show i ++ " encountered returned by nix-shell. \n\n"
+ghcWithIO :: Ghc -> PkgSet -> Purity -> IO ()
+ghcWithIO g pkgs p
+  = P.executeFile "nix-shell" True (p' ++ ["-p",ghcWith g pkgs]) Nothing 
+  where
+    p' = case p of
+      Pure -> ["--pure"]
+      Impure -> []
 
 data Cmd
   = Help
   | Version
-  | GhcWith Ghc PkgSet
+  | GhcWith Purity Ghc PkgSet
   | BadCmd
 
 runCmd :: Cmd -> IO ()
 runCmd = \case
   Help -> putStr help
   Version -> putStr version
-  GhcWith g p -> ghcWithIO g p >>= \case
-    Left err -> putStr err
-    Right () -> pure ()
+  GhcWith p g pkgs -> ghcWithIO g pkgs p
   BadCmd -> putStr badCmd
 
 help,version,badCmd :: String
@@ -69,6 +73,7 @@ help = mconcat
   , "    Usage: gw <OPTIONS> <GHC> <PKGS>\n\n"
   , "    Available options:\n"
   , "      -h,--help            Display this help menu\n"
+  , "      -p,--pure            Enter a pure nix-shell\n"
   , "      -v,--version         Display the version of gw\n"
   , "\n"
   ]
@@ -142,6 +147,10 @@ ghcSet = mconcat
   ]
 
 newtype PkgSet = PkgSet [String]
+  deriving newtype (Eq,Show)
 
 showPkgSet :: PkgSet -> String
 showPkgSet (PkgSet set) = List.unwords set
+
+data Purity = Pure | Impure
+  deriving stock (Eq,Show)

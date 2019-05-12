@@ -38,8 +38,7 @@ library
     Gw
   build-depends:
     , base >= 4.10.1 && < 4.13
-    , process >= 1.6 && < 1.7
-    , turtle >= 1.5 && < 1.6
+    , unix >= 2.7 && < 2.8
   ghc-options:
     -Wall
     -O2
