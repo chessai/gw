@@ -23,6 +23,8 @@ cabal.project.local
 .HTF/
 # Stack
 .stack-work/
+# Nix
+result*
 
 ### IDE/support
 # Vim
