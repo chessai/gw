@@ -6,7 +6,14 @@ version:
 synopsis:
   ghcWithPackages cmdline util
 description:
-  ghcWithPackages cmdline util
+  ghcWithPackages cmdline util. supports:
+  . 
+    * multiple ghc versions
+  .  
+    * pure/impure nix-shell
+  .   
+    * entering shell with multiple packages available
+   
 homepage:
   https://github.com/chessai/gw
 bug-reports:
@@ -31,31 +38,16 @@ extra-doc-files:
 tested-with:
   GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.3
 
-library
-  hs-source-dirs:
-    src
-  exposed-modules:
-    Gw
-  build-depends:
-    , base >= 4.10.1 && < 4.13
-    , unix >= 2.7 && < 2.8
-  ghc-options:
-    -Wall
-    -O2
-  default-language:
-    Haskell2010
-
 executable gw
   hs-source-dirs:
     app
   main-is:
     Main.hs
   build-depends:
-    , base 
-    , gw
+    , base >= 4.10.1 && < 4.13
+    , unix >= 2.7 && < 2.8
   ghc-options:
     -Wall
-    -O2
   default-language:
     Haskell2010
 
